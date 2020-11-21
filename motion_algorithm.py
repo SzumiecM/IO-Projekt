@@ -49,7 +49,7 @@ for i in range(video_length - 1):
         if cv2.contourArea(contour) > 900:
             x_center = int(x + w / 2)
             y_center = int(y + h / 2)
-            if True:
+            if w > 50 and h > 100:
                 cv2.rectangle(diff, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.circle(diff, (x_center, y_center), 5, (0, 0, 255))
                 counter += 1
