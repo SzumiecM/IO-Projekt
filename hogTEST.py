@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
 from time import time
-from imutils.object_detection import non_max_suppression
-
 
 class Person:
     x = 0
@@ -33,6 +31,8 @@ hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 for i in range(video_length - 1):
     start = time()
     ret, image = cap.read()
+    image = cv2.resize(image, (640, 480))
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     #orig = image.copy()
     (rects, weights) = hog.detectMultiScale(image, winStride=(4, 4),
                                             padding=(8, 8), scale=1.05)
