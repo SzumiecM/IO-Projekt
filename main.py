@@ -4,6 +4,10 @@ from time import time
 from imutils.object_detection import non_max_suppression
 
 
+# TODO  - usuwanie osób które wyszły poza ekran ( tj. zapisywanie ich ale usuwanie z frame'a )
+#       - dynamiczne wyliczanie odchylenia ( np. z analizy wymiarów kwadratu (?) )
+#           - super byłoby zrobić dynamiczne odchylenie dla każdego z osobna, które wyliczałoby się co jakiś czas
+
 class Person:
     x = 0
     y = 0
@@ -12,9 +16,15 @@ class Person:
         self.x = x
         self.y = y
 
-    def set_postition(self, x, y):
+    def set_position(self, x, y):
         self.x = x
         self.y = y
+
+    def check_if_its_me(self, x, y, devX, devY):
+        if self.x - devX < x < self.x + devX:
+            if self.y - devY < y < self.y + devY:
+                return True
+        return False
 
 
 # initialize the HOG descriptor/person detector
@@ -23,25 +33,21 @@ hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
 cv2.startWindowThread()
 
-# open webcam video stream
-cap = cv2.VideoCapture('grupaB1.mpg')
+cap = cv2.VideoCapture('example_01.mp4')
 video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-# the output will be written to output.avi
-# out = cv2.VideoWriter(
-#     'output.avi',
-#     cv2.VideoWriter_fourcc(*'MJPG'),
-#     15.,
-#     (640, 480))
 
 times = []
 counted = []
 
-for i in range(video_length - 1):
-    start = time()
-    counter = 0
+# TODO do zrobienia plik konfiguracyjny jeśli wyjdzie więcej takich zmiennych
+devX = 30
+devY = 60
+people = []
 
-    # Capture frame-by-frame
+for i in range(video_length - 1):
+    counter = 0
+    start = time()
+
     ret, frame = cap.read()
 
     # resizing for faster detection
@@ -57,24 +63,37 @@ for i in range(video_length - 1):
     boxes = non_max_suppression(boxes, probs=None, overlapThresh=0.65)
 
     for (xA, yA, xB, yB) in boxes:
-        # display the detected boxes in the colour picture
-        cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
+        x = int(xA + (xB - xA) / 2)
+        y = int(yA + (yB - yA) / 2)
+        found = False
+
+        for person in people:
+            if person.check_if_its_me(x, y, devX, devY):
+                person.set_position(x, y)
+                found = True
+                break
+
+        if not found:
+            people.append(Person(x, y))
+
+        cv2.circle(frame, (x, y), 5, (0, 0, 255))
         counter += 1
+
+    for person in people:
+        cv2.circle(frame, (person.x, person.y), 5, (255, 255, 0))
+
+    cv2.imshow('frame', frame)
+
     end = time()
     times.append(end - start)
     counted.append(counter)
-    # Write the output video
-    # out.write(frame.astype('uint8'))
-    # Display the resulting frame
-    cv2.imshow('frame', frame)
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# When everything done, release the capture
 cap.release()
-# and release the output
-# out.release()
-# finally, close the window
 cv2.destroyAllWindows()
+
 print(f'Avarage time per frame: {np.mean(times)}s')
 print(f'Max people counted in single frame: {np.max(counted)}')
+print(f'People counted: {len(people)}')
