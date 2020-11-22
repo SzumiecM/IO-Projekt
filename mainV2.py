@@ -1,0 +1,106 @@
+import numpy as np
+import cv2
+from time import time
+from imutils.object_detection import non_max_suppression
+
+
+# TODO  - zmienne wielkości okienek trackerów
+#       - automatyczny dev
+
+class Person:
+
+    def __init__(self, xA, yA, xB, yB, tracker):
+        self.tracker = tracker
+        self.xA = xA
+        self.yA = yA
+        self.xB = xB
+        self.yB = yB
+        self.dev = 50
+
+    def set_postions(self, x, y):
+        self.xB = xB + xA - x
+        self.yB = yB + yA - y
+        self.xA = x
+        self.yA = y
+
+    def check_if_its_me(self, xA, yA, xB, yB):
+        if self.xA - self.dev < xA < self.xA + self.dev:
+            if self.yA - self.dev < yA < self.yA + self.dev:
+                # TODO
+                return True
+        return False
+
+
+# initialize the HOG descriptor/person detector
+hog = cv2.HOGDescriptor()
+hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
+cv2.startWindowThread()
+
+cap = cv2.VideoCapture('grupaB1.mpg')
+video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+times = []
+counted = []
+people = []
+
+for i in range(video_length - 1):
+    counter = 0
+    start = time()
+
+    ret, frame = cap.read()
+
+    # resizing for faster detection
+    frame = cv2.resize(frame, (640, 480))
+    # using a greyscale picture, also for faster detection
+    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+
+    # detect people in the image
+    # returns the bounding boxes for the detected objects
+    boxes, weights = hog.detectMultiScale(frame, winStride=(16, 16), hitThreshold=0.5)
+
+    boxes = np.array([[x, y, x + w, y + h] for (x, y, w, h) in boxes])
+    boxes = non_max_suppression(boxes, probs=None, overlapThresh=0.65)
+
+    for (xA, yA, xB, yB) in boxes:
+        # x = int(xA + (xB - xA) / 2)
+        # y = int(yA + (yB - yA) / 2)
+        found = False
+
+        for person in people:
+            if person.check_if_its_me(xA, yA, xB, yB):
+                found = True
+                break
+
+        if not found:
+            tracker = cv2.TrackerKCF_create()
+            tracker.init(frame, (xA, yA, xB, yB))
+            people.append(Person(xA, yA, xB, yB, tracker))
+
+        # cv2.circle(frame, (x, y), 5, (0, 0, 255))
+        cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0))
+        counter += 1
+
+    for person in people:
+        (success, box) = person.tracker.update(frame)
+
+        if success:
+            (x, y, w, h) = [int(v) for v in box]
+            person.set_postions(x, y)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+    cv2.imshow('frame', frame)
+
+    end = time()
+    times.append(end - start)
+    counted.append(counter)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+
+print(f'Avarage time per frame: {np.mean(times)}s')
+print(f'Max people counted in single frame: {np.max(counted)}')
+print(f'People counted: {len(people)}')
