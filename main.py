@@ -12,17 +12,15 @@ from imutils.object_detection import non_max_suppression
 
 class Person:
 
-    def __init__(self, x, y, dev_x, dev_y, color):
+    def __init__(self, x, y, dev_x, dev_y):
         self.x = x
         self.y = y
         self.dev_x = dev_x
         self.dev_y = dev_y
-        self.color = color
 
         self.updated = False
         self.vel_x = 0
         self.vel_y = 0
-        self.dev_color = 100
 
     def set_position(self, x, y):
         self.vel_x = x - self.x  # rozdzielić na ilość ramek
@@ -31,11 +29,9 @@ class Person:
         self.y = y
         self.updated = True
 
-    def check_if_its_me(self, x, y, color):
+    def check_if_its_me(self, x, y):
         if self.x - self.dev_x < x < self.x + self.dev_x:
             if self.y - self.dev_y < y < self.y + self.dev_y:
-                # if self.compare_color(color):
-                #     return True
                 return True
         return False
 
@@ -56,9 +52,6 @@ class Person:
             self.vel_y -= 1
         elif self.vel_y < 0:
             self.vel_y += 1
-
-    #def compare_color(self, color):
-
 
 
 # initialize the HOG descriptor/person detector
@@ -102,7 +95,7 @@ for i in range(video_length - 1):
         found = False
 
         for person in people:
-            if person.check_if_its_me(x, y, frame[x][y]):
+            if person.check_if_its_me(x, y):
                 person.set_position(x, y)
                 person.set_dev((xB - xA) * percent, (yB - yA) * percent)
                 found = True
@@ -110,7 +103,7 @@ for i in range(video_length - 1):
 
         if not found:
             try:
-                people.append(Person(x, y, (xB - xA) * percent, (yB - yA) * percent, frame[x][y]))
+                people.append(Person(x, y, (xB - xA) * percent, (yB - yA) * percent))
             except IndexError:
                 pass
 
