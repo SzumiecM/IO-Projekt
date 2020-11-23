@@ -4,8 +4,12 @@ from time import time
 from imutils.object_detection import non_max_suppression
 
 
-# TODO  - zmienne wielkości okienek trackerów
-#       - automatyczny dev
+# TODO  - zmienne wielkości okienek trackerów?
+#           - wyciąganie mediany wielkości kwadratów z kilku sekund???
+#       - automatyczny dev <---
+#       - ZASTOSOWAĆ DRUGI MECHANIZM WYKRYWANIAAA?? <<<---
+#           wydaje się być koniecznością, program totalnie wywala się przy example01_mp4 (nie jest konieczny ale
+#           fajnie żeby działał jednak zawsze)
 
 class Person:
 
@@ -15,7 +19,7 @@ class Person:
         self.yA = yA
         self.xB = xB
         self.yB = yB
-        self.dev = 50
+        self.dev = 40  # HARD CODED AS FUCK, TODO FIX
 
     def set_postions(self, x, y):
         self.xB = xB + xA - x
@@ -26,7 +30,7 @@ class Person:
     def check_if_its_me(self, xA, yA, xB, yB):
         if self.xA - self.dev < xA < self.xA + self.dev:
             if self.yA - self.dev < yA < self.yA + self.dev:
-                # TODO
+                # TODO ?? po zrobieniu dla wartości B trackery zaczęły się baaaaardzo duplikować
                 return True
         return False
 
@@ -39,6 +43,9 @@ cv2.startWindowThread()
 
 cap = cv2.VideoCapture('grupaB1.mpg')
 video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+sizes = []
+avg_size = 0
 
 times = []
 counted = []
@@ -57,7 +64,7 @@ for i in range(video_length - 1):
 
     # detect people in the image
     # returns the bounding boxes for the detected objects
-    boxes, weights = hog.detectMultiScale(frame, winStride=(16, 16), hitThreshold=0.5)
+    boxes, weights = hog.detectMultiScale(frame, winStride=(16, 16), hitThreshold=0.1)
 
     boxes = np.array([[x, y, x + w, y + h] for (x, y, w, h) in boxes])
     boxes = non_max_suppression(boxes, probs=None, overlapThresh=0.65)
@@ -66,6 +73,8 @@ for i in range(video_length - 1):
         # x = int(xA + (xB - xA) / 2)
         # y = int(yA + (yB - yA) / 2)
         found = False
+        sizes.append((xB - xA, yB - yA))
+        avg_size = np.mean(sizes)
 
         for person in people:
             if person.check_if_its_me(xA, yA, xB, yB):
@@ -75,9 +84,9 @@ for i in range(video_length - 1):
                 # person.tracker = tracker
                 break
 
-        if not found:
+        if not found and np.mean((xB - xA, yB - yA)) <= avg_size:
             tracker = cv2.TrackerKCF_create()
-            tracker.init(frame, (xA, yA, xB-xA, yB-yA))
+            tracker.init(frame, (xA, yA, xB - xA, yB - yA))
             people.append(Person(xA, yA, xB, yB, tracker))
 
         # cv2.circle(frame, (x, y), 5, (0, 0, 255))
