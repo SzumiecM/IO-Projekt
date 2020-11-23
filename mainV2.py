@@ -70,11 +70,14 @@ for i in range(video_length - 1):
         for person in people:
             if person.check_if_its_me(xA, yA, xB, yB):
                 found = True
+                # tracker = cv2.TrackerKCF_create()
+                # tracker.init(frame, (xA, yA, xB - xA, yB - yA))
+                # person.tracker = tracker
                 break
 
         if not found:
             tracker = cv2.TrackerKCF_create()
-            tracker.init(frame, (xA, yA, xB, yB))
+            tracker.init(frame, (xA, yA, xB-xA, yB-yA))
             people.append(Person(xA, yA, xB, yB, tracker))
 
         # cv2.circle(frame, (x, y), 5, (0, 0, 255))
