@@ -3,3 +3,4 @@
 .idea/workspace.xml
 *.xml
 .idea/IO-Projekt.iml
+materials/yolov3.weights
