@@ -10,6 +10,7 @@ from imutils.object_detection import non_max_suppression
 #       - ZASTOSOWAĆ DRUGI MECHANIZM WYKRYWANIAAA?? <<<---
 #           wydaje się być koniecznością, program totalnie wywala się przy example01_mp4 (nie jest konieczny ale
 #           fajnie żeby działał jednak zawsze)
+#       - dodać licznik osób na obrazie
 
 class Person:
 
