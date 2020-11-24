@@ -42,7 +42,7 @@ hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
 cv2.startWindowThread()
 
-cap = cv2.VideoCapture('grupaB1.mpg')
+cap = cv2.VideoCapture('example_01.mp4')
 video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 sizes = []
@@ -53,6 +53,10 @@ counted = []
 people = []
 
 net = cv2.dnn.readNetFromDarknet('yolov2-tiny.cfg', 'yolov2-tiny.weights')
+LABELS = open('coco.names').read().strip().split("\n")
+
+our_confidence = 0.6
+our_threshold = 0.1
 
 for i in range(video_length - 1):
     counter = 0
@@ -90,12 +94,13 @@ for i in range(video_length - 1):
             confidence = scores[classID]
             # filter out weak predictions by ensuring the detected
             # probability is greater than the minimum probability
-            if confidence > 0.1:
+            if confidence > our_confidence and LABELS[classID] == 'person':
                 # scale the bounding box coordinates back relative to the
                 # size of the image, keeping in mind that YOLO actually
                 # returns the center (x, y)-coordinates of the bounding
                 # box followed by the boxes' width and height
                 box = detection[0:4] * np.array([W, H, W, H])
+
                 (centerX, centerY, width, height) = box.astype("int")
                 # use the center (x, y)-coordinates to derive the top and
                 # and left corner of the bounding box
@@ -107,8 +112,8 @@ for i in range(video_length - 1):
                 confidences.append(float(confidence))
                 classIDs.append(classID)
 
-    idxs = cv2.dnn.NMSBoxes(boxes, confidences, 0.1,
-                            0.1)
+    idxs = cv2.dnn.NMSBoxes(boxes, confidences, our_confidence,
+                            our_threshold)
 
     if len(idxs) > 0:
         # loop over the indexes we are keeping
@@ -118,6 +123,11 @@ for i in range(video_length - 1):
             (w, h) = (boxes[i][2], boxes[i][3])
             # draw a bounding box rectangle and label on the image
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            counter += 1
+
+    cv2.putText(frame, f'1 person' if counter == 1 else f'{counter} people', (10, 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (0, 0, 255), 2)
 
     cv2.imshow('frame', frame)
 
