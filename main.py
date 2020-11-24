@@ -4,54 +4,36 @@ from time import time
 from imutils.object_detection import non_max_suppression
 
 
-# TODO  - usuwanie osób które wyszły poza ekran ( tj. zapisywanie ich ale usuwanie z frame'a )
-#       - dynamiczne wyliczanie odchylenia ( np. z analizy wymiarów kwadratu (?) )
-#           - super byłoby zrobić dynamiczne odchylenie dla każdego z osobna, które wyliczałoby się co jakiś czas
-#           - porównywanie koloru
-#           - CZY WARTO ZASTOSOWAĆ STATYSTYKĘ ( NP. ODCHYLENIA STANDARDOWE ITP ) ????????????
+# TODO  - zmienne wielkości okienek trackerów?
+#           - wyciąganie mediany wielkości kwadratów z kilku sekund???
+#       - automatyczny dev <---
+#       - ZASTOSOWAĆ DRUGI MECHANIZM WYKRYWANIAAA?? <<<---
+#           wydaje się być koniecznością, program totalnie wywala się przy example01_mp4 (nie jest konieczny ale
+#           fajnie żeby działał jednak zawsze)
+#       - dodać licznik osób na obrazie
 
 class Person:
 
-    def __init__(self, x, y, dev_x, dev_y):
-        self.x = x
-        self.y = y
-        self.dev_x = dev_x
-        self.dev_y = dev_y
+    def __init__(self, xA, yA, xB, yB, tracker):
+        self.tracker = tracker
+        self.xA = xA
+        self.yA = yA
+        self.xB = xB
+        self.yB = yB
+        self.dev = 40  # HARD CODED AS FUCK, TODO FIX
 
-        self.updated = False
-        self.vel_x = 0
-        self.vel_y = 0
+    def set_postions(self, x, y):
+        self.xB = xB + xA - x
+        self.yB = yB + yA - y
+        self.xA = x
+        self.yA = y
 
-    def set_position(self, x, y):
-        self.vel_x = x - self.x  # rozdzielić na ilość ramek
-        self.vel_y = y - self.y
-        self.x = x
-        self.y = y
-        self.updated = True
-
-    def check_if_its_me(self, x, y):
-        if self.x - self.dev_x < x < self.x + self.dev_x:
-            if self.y - self.dev_y < y < self.y + self.dev_y:
+    def check_if_its_me(self, xA, yA, xB, yB):
+        if self.xA - self.dev < xA < self.xA + self.dev:
+            if self.yA - self.dev < yA < self.yA + self.dev:
+                # TODO ?? po zrobieniu dla wartości B trackery zaczęły się baaaaardzo duplikować
                 return True
         return False
-
-    def set_dev(self, dev_x, dev_y):
-        self.dev_x = dev_x
-        self.dev_y = dev_y
-
-    def update_position(self):
-        self.x += self.vel_x
-        self.y += self.vel_y
-
-        # TODO da się krócej / lepiej ????
-        if self.vel_x > 0:
-            self.vel_x -= 1
-        elif self.vel_x < 0:
-            self.vel_x += 1
-        if self.vel_y > 0:
-            self.vel_y -= 1
-        elif self.vel_y < 0:
-            self.vel_y += 1
 
 
 # initialize the HOG descriptor/person detector
@@ -63,59 +45,79 @@ cv2.startWindowThread()
 cap = cv2.VideoCapture('grupaB1.mpg')
 video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+sizes = []
+avg_size = 0
+
 times = []
 counted = []
-
-# TODO do zrobienia plik konfiguracyjny jeśli wyjdzie więcej takich zmiennych
-percent = 0.2
-
 people = []
+
+net = cv2.dnn.readNetFromDarknet('yolov2-tiny.cfg', 'yolov2-tiny.weights')
 
 for i in range(video_length - 1):
     counter = 0
     start = time()
-
     ret, frame = cap.read()
+    (H, W) = frame.shape[:2]
+    # determine only the *output* layer names that we need from YOLO
+    ln = net.getLayerNames()
+    ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+    # construct a blob from the input image and then perform a forward
+    # pass of the YOLO object detector, giving us our bounding boxes and
+    # associated probabilities
+    blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416),
+                                 swapRB=True, crop=False)
+    net.setInput(blob)
+    layerOutputs = net.forward(ln)
 
-    # resizing for faster detection
-    frame = cv2.resize(frame, (640, 480))
-    # using a greyscale picture, also for faster detection
-    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    boxes = []
+    confidences = []
+    classIDs = []
 
-    # detect people in the image
-    # returns the bounding boxes for the detected objects
-    boxes, weights = hog.detectMultiScale(frame, winStride=(16, 16), hitThreshold=0.5)
+    # # resizing for faster detection
+    # frame = cv2.resize(frame, (640, 480))
+    # # using a greyscale picture, also for faster detection
+    # gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
-    boxes = np.array([[x, y, x + w, y + h] for (x, y, w, h) in boxes])
-    boxes = non_max_suppression(boxes, probs=None, overlapThresh=0.65)
+    # loop over each of the layer outputs
+    for output in layerOutputs:
+        # loop over each of the detections
+        for detection in output:
+            # extract the class ID and confidence (i.e., probability) of
+            # the current object detection
+            scores = detection[5:]
+            classID = np.argmax(scores)
+            confidence = scores[classID]
+            # filter out weak predictions by ensuring the detected
+            # probability is greater than the minimum probability
+            if confidence > 0.1:
+                # scale the bounding box coordinates back relative to the
+                # size of the image, keeping in mind that YOLO actually
+                # returns the center (x, y)-coordinates of the bounding
+                # box followed by the boxes' width and height
+                box = detection[0:4] * np.array([W, H, W, H])
+                (centerX, centerY, width, height) = box.astype("int")
+                # use the center (x, y)-coordinates to derive the top and
+                # and left corner of the bounding box
+                x = int(centerX - (width / 2))
+                y = int(centerY - (height / 2))
+                # update our list of bounding box coordinates, confidences,
+                # and class IDs
+                boxes.append([x, y, int(width), int(height)])
+                confidences.append(float(confidence))
+                classIDs.append(classID)
 
-    for (xA, yA, xB, yB) in boxes:
-        x = int(xA + (xB - xA) / 2)
-        y = int(yA + (yB - yA) / 2)
-        found = False
+    idxs = cv2.dnn.NMSBoxes(boxes, confidences, 0.1,
+                            0.1)
 
-        for person in people:
-            if person.check_if_its_me(x, y):
-                person.set_position(x, y)
-                person.set_dev((xB - xA) * percent, (yB - yA) * percent)
-                found = True
-                break
-
-        if not found:
-            try:
-                people.append(Person(x, y, (xB - xA) * percent, (yB - yA) * percent))
-            except IndexError:
-                pass
-
-        cv2.circle(frame, (x, y), 5, (0, 0, 255))
-        cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0))
-        counter += 1
-
-    for person in people:
-        # if not person.updated:
-        #     person.update_position()
-        cv2.circle(frame, (person.x, person.y), 5, (255, 255, 0))
-        person.updated = False
+    if len(idxs) > 0:
+        # loop over the indexes we are keeping
+        for i in idxs.flatten():
+            # extract the bounding box coordinates
+            (x, y) = (boxes[i][0], boxes[i][1])
+            (w, h) = (boxes[i][2], boxes[i][3])
+            # draw a bounding box rectangle and label on the image
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
     cv2.imshow('frame', frame)
 
@@ -132,5 +134,3 @@ cv2.destroyAllWindows()
 print(f'Avarage time per frame: {np.mean(times)}s')
 print(f'Max people counted in single frame: {np.max(counted)}')
 print(f'People counted: {len(people)}')
-# for person in people:
-#     print(person.color)
