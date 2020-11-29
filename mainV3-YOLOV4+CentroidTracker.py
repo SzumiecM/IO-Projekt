@@ -13,8 +13,8 @@ from imutils.object_detection import non_max_suppression
 #           wydaje się być koniecznością, program totalnie wywala się przy example01_mp4 (nie jest konieczny ale
 #           fajnie żeby działał jednak zawsze)
 #       - dodać licznik osób na obrazie
-class CentroidTracker():
-    def __init__(self, maxFramesDisappeared=60):
+class CentroidTracker:
+    def __init__(self, maxFramesDisappeared=60): #TODO do zwiększenia??
         # counter to assign unique IDs to each person
         self.nextObjectID = 0
         # dictionary that stores person ID as the key and the centroid (x,y) coordinates as val
@@ -149,14 +149,13 @@ hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
 cv2.startWindowThread()
 
-
 cap = cv2.VideoCapture('grupaB1.mpg')
 video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 
-out = cv2.VideoWriter('outpy.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
+out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
 
 ct = CentroidTracker()
 
