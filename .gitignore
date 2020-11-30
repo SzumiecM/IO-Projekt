@@ -5,3 +5,4 @@
 .idea/IO-Projekt.iml
 materials/yolov3.weights
 outpy.avi
+__pycache__/inport.cpython-38.pyc
