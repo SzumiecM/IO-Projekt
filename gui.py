@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
 import cv2
-import yolo4KFC
+import main
 
 window = tk.Tk()
 # Code to add widgets will go here...
@@ -18,7 +18,7 @@ def clicked_bt1():
     l_accept.grid(column=2, row=1)
 
 def clicked_bt2():
-    yolo4KFC.show(filename)
+    main.show(filename)
 
 #Appereance
 l_vid_choice = tk.Label(window, text="Wybierz nagranie\n do analizy")
