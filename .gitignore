@@ -7,3 +7,8 @@ materials/yolov3.weights
 outpy.avi
 __pycache__/inport.cpython-38.pyc
 __pycache__/yolo4KFC.cpython-38.pyc
+*.log
+*.txt
+*.avi
+*.log
+grupaB1.mpg.log
