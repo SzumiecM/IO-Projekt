@@ -1,272 +1,187 @@
-import numpy as np
+import tkinter as tk
+from tkinter.filedialog import askopenfilename
+from tracker import CentroidTracker
 import cv2
 from time import time
-from scipy.spatial import distance as dist
-from collections import OrderedDict
+import numpy as np
+import os
 import logging
 
 
-class CentroidTracker():
-    def __init__(self, maxFramesDisappeared=40):
-        # counter to assign unique IDs to each person
-        self.nextObjectID = 0
-        # dictionary that stores person ID as the key and the centroid (x,y) coordinates as val
-        self.objects = OrderedDict()
-        # stores the information about person clothing colour
-        self.colours = OrderedDict()
-        # stores the information for how long a particular person has ben marked as lost
-        self.disappeared = OrderedDict()
-        # the number of consecutive frames a person is allowed to be marked as lost/disappeared
-        # until we deregister it
-        self.maxFramesDisappeared = maxFramesDisappeared
+class Window:
 
-    def register(self, centroid, box, frame, timestamp):
-        # use the next available UID
-        self.objects[self.nextObjectID] = centroid
-        self.colours[self.nextObjectID] = self.setColour(box, frame)
-        bgr = self.setColour(box, frame)
-        if any(max(bgr)-x > 10 for x in bgr):
-            winner = max(bgr)  # TODO
+    def __init__(self):
+        self.master = tk.Tk()
 
-        minutes = f'int(timestamp / 60)m' if int(timestamp / 60) > 0 else ''
-        seconds = f'{round(timestamp % 60)}s'
-        logging.info(
-            f'Person found at: {minutes}{seconds} with center coordinates: {centroid} and average color of clothing: {str(self.colours[self.nextObjectID])} classified as {"color"} ')
-        self.disappeared[self.nextObjectID] = 0
-        self.nextObjectID += 1
+        self.master.title("Human Detection")
+        self.master.geometry('400x200')
+        self.master.configure(bg="alice blue")
 
-    def deregister(self, objectID):
-        logging.info(f'Person of ID: {objectID} disappeared')
-        # to deregister person we delete the object ID from both dict
-        del self.objects[objectID]
-        del self.disappeared[objectID]
-        del self.colours[objectID]
+        self.filename = None
+        self.number = 1
+        self.output_movie_name = ''
 
-    def update(self, inputCentroids, boxes, frame, timestamp):
-        # rects - list of centerX, centerY coordinates of bounding boxes
-        # first - check if it is empty
-        if len(inputCentroids) == 0:
-            # loop over existing tracked people and mark then as disappeared
-            for objectID in list(self.disappeared.keys()):
-                self.disappeared[objectID] += 1
+        self.l1 = tk.Label(self.master, text="Let's detect !", bg="CadetBlue4", font='Georgia')
+        self.l1.pack(fill=tk.X)
+        self.l2 = tk.Label(self.master, text="Choose the files to analyze:", font=('Georgia', 10), bg="alice blue")
+        self.l2.pack(pady=(5, 0))
+        self.l3 = tk.Button(self.master, text="Browse", command=self.clicked_bt1, fg="blue", font=('Georgia', 10))
+        self.l3.pack(pady=0)
+        self.l4 = tk.Label(self.master, text="No file selected", fg="grey", font=('Georgia', 8), bg="alice blue")
+        self.l4.pack(pady=0)
+        self.l5 = tk.Button(self.master, text="Start analyzing", command=self.clicked_bt2, fg="blue",
+                            font=('Georgia', 10), state="disabled")
+        self.l5.pack(pady=12)
+        self.l6 = tk.Label(self.master, text="Analyze not started yet", fg="grey", font=('Georgia', 8), bg="alice blue")
+        self.l6.pack(pady=0)
 
-                # deregister the person if it reached maximum number of frames where it
-                # has been marked as missing
-                if self.disappeared[objectID] > self.maxFramesDisappeared:
-                    self.deregister(objectID)
+    def clicked_bt1(self):
+        acceptable_types = [('Pliki wideo', '*.avi;*.mp4;*.mov;*.mpg')]
+        self.filename = askopenfilename(filetypes=acceptable_types)
+        if self.filename != '':
+            self.l4['text'] = self.filename
+            self.l5['state'] = 'normal'
 
-            return self.objects
+    def clicked_bt2(self):
+        # TODO: handle exception when someone close the app during analyzing
+        self.l5['state'] = 'disabled'
+        filename_without_path = os.path.basename(self.filename)
+        self.output_movie_name = '{}_analyze{}.avi'.format(filename_without_path[:-4], self.number)
+        self.show(self.filename)
+        self.number += 1
 
-        # create an array of input centroids for the current frame
+    def show(self, filename):
 
-        # if we are currently not tracking any people take the input centroids
-        # and register them
-        if len(self.objects) == 0:
-            for i in range(0, len(inputCentroids)):
-                self.register(inputCentroids[i], boxes[i], frame, timestamp)
+        # initialize the HOG descriptor/person detector
+        logging.basicConfig(filename=filename + ".txt", level=logging.INFO)
 
-        # if not, then we are currently tracking objects so we need to
-        # try and match the input centroids to existing people centroids
-        else:
-            # take the set of people IDs and corresponding centroids
-            objectIDs = list(self.objects.keys())
-            objectCentroids = list(self.objects.values())
+        cv2.startWindowThread()
 
-            # compute the distance between each pair of people centroids
-            # and input centroids, our goal is to match an input centroid to an
-            # existing person centroid
-            D = dist.cdist(np.array(objectCentroids), inputCentroids)
+        cap = cv2.VideoCapture(filename)
+        video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        video_length_in_seconds = video_length / cap.get(cv2.CAP_PROP_FPS)
 
-            rows = D.min(axis=1).argsort()
+        frame_width = int(cap.get(3))
+        frame_height = int(cap.get(4))
 
-            cols = D.argmin(axis=1)[rows]
+        out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
 
-            usedRows = set()
-            usedCols = set()
+        ct = CentroidTracker()
 
-            for (row, col) in zip(rows, cols):
-                # if we have already examined either the row or
-                # column value before, ignore it
-                # val
-                if row in usedRows or col in usedCols:
-                    continue
-                # otherwise, grab the object ID for the current row,
-                # set its new centroid, and reset the disappeared
-                # counter
-                objectID = objectIDs[row]
-                self.objects[objectID] = inputCentroids[col]
-                self.disappeared[objectID] = 0
-                # indicate that we have examined each of the row and
-                # column indexes, respectively
-                usedRows.add(row)
-                usedCols.add(col)
+        times = []
+        counted = []
+        people = []
 
-            unusedRows = set(range(0, D.shape[0])).difference(usedRows)
-            unusedCols = set(range(0, D.shape[1])).difference(usedCols)
+        net = cv2.dnn.readNetFromDarknet('yolov4-tiny.cfg', 'yolov4-tiny.weights')
+        LABELS = open('coco.names').read().strip().split("\n")
 
-            if D.shape[0] >= D.shape[1]:
-                # loop over the unused row indexes
-                for row in unusedRows:
-                    # grab the object ID for the corresponding row
-                    # index and increment the disappeared counter
-                    objectID = objectIDs[row]
-                    self.disappeared[objectID] += 1
-                    # check to see if the number of consecutive
-                    # frames the object has been marked "disappeared"
-                    # for warrants deregistering the object
-                    if self.disappeared[objectID] > self.maxFramesDisappeared:
-                        self.deregister(objectID)
+        our_confidence = 0.6
+        our_threshold = 0.1
 
-            else:
-                for col in unusedCols:
-                    self.register(inputCentroids[col], boxes[col], frame, timestamp)
-            # return the set of trackable objects
-        return self.objects
+        for current_frame in range(1, video_length):
 
-    def setColour(self, box, frame):
-        crop_img = frame[box[1]: int(box[1] + box[3] / 2), box[0]:int(box[0] + box[2])]
-        # Wersja 1
-        avg_color_per_row = np.average(crop_img, axis=0)
-        # calculate the averages of our rows
-        avg_colors = np.average(avg_color_per_row, axis=0)
-        return avg_colors
-        # Wwersja 2
-        # a2D = crop_img.reshape(-1, crop_img.shape[-1])
-        # col_range = (256, 256, 256)  # generically : a2D.max(0)+1
-        # a1D = np.ravel_multi_index(a2D.T, col_range)
-        # return np.unravel_index(np.bincount(a1D).argmax(), col_range)
-        # wersja 3
-        # colors, count = np.unique(crop_img.reshape(-1, crop_img.shape[-1]), axis=0, return_counts=True)
-        # return colors[count.argmax()]
+            counter = 0
+            start = time()
+            ret, frame = cap.read()
+            raw_frame = frame.copy()
+            (H, W) = frame.shape[:2]
+            # determine only the *output* layer names that we need from YOLO
+            ln = net.getLayerNames()
+            ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+            # construct a blob from the input image and then perform a forward
+            # pass of the YOLO object detector, giving us our bounding boxes and
+            # associated probabilities
+            blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416),
+                                         swapRB=True, crop=False)
+            net.setInput(blob)
+            layerOutputs = net.forward(ln)
+
+            boxes = []
+            confidences = []
+            centroids = []
+            NMSboxes = []
+
+            # loop over each of the layer outputs
+            for output in layerOutputs:
+                # loop over each of the detections
+                for detection in output:
+                    # extract the class ID and confidence (i.e., probability) of
+                    # the current object detection
+                    scores = detection[5:]
+                    classID = np.argmax(scores)
+                    confidence = scores[classID]
+                    # filter out weak predictions by ensuring the detected
+                    # probability is greater than the minimum probability
+                    if confidence > our_confidence and LABELS[classID] == 'person':
+                        # scale the bounding box coordinates back relative to the
+                        # size of the image, keeping in mind that YOLO actually
+                        # returns the center (x, y)-coordinates of the bounding
+                        # box followed by the boxes' width and height
+                        box = detection[0:4] * np.array([W, H, W, H])
+
+                        (centerX, centerY, width, height) = box.astype("int")
+                        # use the center (x, y)-coordinates to derive the top and
+                        # and left corner of the bounding box
+                        x = int(centerX - (width / 2))
+                        y = int(centerY - (height / 2))
+                        # update our list of bounding box coordinates, confidences,
+                        # and class IDs
+                        # centroids.append((centerX,centerY))
+                        boxes.append([x, y, int(width), int(height)])
+                        confidences.append(float(confidence))
+
+            idxs = cv2.dnn.NMSBoxes(boxes, confidences, our_confidence,
+                                    our_threshold)
+
+            if len(idxs) > 0:
+                # loop over the indexes we are keeping
+                for i in idxs.flatten():
+                    # extract the bounding box coordinates
+                    (x, y) = (boxes[i][0], boxes[i][1])
+                    (w, h) = (boxes[i][2], boxes[i][3])
+                    NMSboxes.append((x, y, w, h))
+                    centroids.append((boxes[i][0] + boxes[i][2] / 2, boxes[i][1] + boxes[i][3] / 2))
+                    # draw a bounding box rectangle and label on the image
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                    counter += 1
+            objects = ct.update(centroids, NMSboxes, raw_frame,
+                                timestamp=current_frame * video_length_in_seconds / video_length)
+
+            for (objectID, centroid) in objects.items():
+                text = "ID {}".format(objectID)
+                cv2.putText(frame, text, (int(centroid[0]) - 10, int(centroid[1]) - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.circle(frame, (int(centroid[0]), int(centroid[1])), 4, (0, 255, 0), -1)
+
+            cv2.putText(frame, f'{len(objects)} people currently in frame', (10, 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 0, 255), 2)
+
+            out.write(frame)
+
+            end = time()
+            times.append(end - start)
+            counted.append(counter)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            self.l6['text'] = f'Progress: {"{:.2f}".format(100 * current_frame / video_length)}%'
+            self.master.update()
+
+        self.l5['state'] = 'normal'
+        self.l6['text'] = 'Analyzing finished'
+        self.master.update()
+        cap.release()
+        cv2.destroyAllWindows()
+
+        print(f'Avarage time per frame: {np.mean(times)}s')
+        print(f'Max people counted in single frame: {np.max(counted)}')
+        print(f'People counted: {len(people)}')
+
+    def run(self):
+        self.master.mainloop()
 
 
-def show(filename):
-    # initialize the HOG descriptor/person detector
-    logging.basicConfig(filename=filename + ".log", level=logging.INFO)
-
-    cv2.startWindowThread()
-
-    cap = cv2.VideoCapture(filename)
-    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    video_length_in_seconds = video_length / cap.get(cv2.CAP_PROP_FPS)
-
-    frame_width = int(cap.get(3))
-    frame_height = int(cap.get(4))
-
-    out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
-
-    ct = CentroidTracker()
-
-    times = []
-    counted = []
-    people = []
-
-    net = cv2.dnn.readNetFromDarknet('yolov4-tiny.cfg', 'yolov4-tiny.weights')
-    LABELS = open('coco.names').read().strip().split("\n")
-
-    our_confidence = 0.6
-    our_threshold = 0.1
-
-    for current_frame in range(1, video_length):
-
-        counter = 0
-        start = time()
-        ret, frame = cap.read()
-        raw_frame = frame.copy()
-        (H, W) = frame.shape[:2]
-        # determine only the *output* layer names that we need from YOLO
-        ln = net.getLayerNames()
-        ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-        # construct a blob from the input image and then perform a forward
-        # pass of the YOLO object detector, giving us our bounding boxes and
-        # associated probabilities
-        blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416),
-                                     swapRB=True, crop=False)
-        net.setInput(blob)
-        layerOutputs = net.forward(ln)
-
-        boxes = []
-        confidences = []
-        centroids = []
-        NMSboxes = []
-
-        # # resizing for faster detection
-        # frame = cv2.resize(frame, (640, 480))
-        # # using a greyscale picture, also for faster detection
-        # gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-
-        # loop over each of the layer outputs
-        for output in layerOutputs:
-            # loop over each of the detections
-            for detection in output:
-                # extract the class ID and confidence (i.e., probability) of
-                # the current object detection
-                scores = detection[5:]
-                classID = np.argmax(scores)
-                confidence = scores[classID]
-                # filter out weak predictions by ensuring the detected
-                # probability is greater than the minimum probability
-                if confidence > our_confidence and LABELS[classID] == 'person':
-                    # scale the bounding box coordinates back relative to the
-                    # size of the image, keeping in mind that YOLO actually
-                    # returns the center (x, y)-coordinates of the bounding
-                    # box followed by the boxes' width and height
-                    box = detection[0:4] * np.array([W, H, W, H])
-
-                    (centerX, centerY, width, height) = box.astype("int")
-                    # use the center (x, y)-coordinates to derive the top and
-                    # and left corner of the bounding box
-                    x = int(centerX - (width / 2))
-                    y = int(centerY - (height / 2))
-                    # update our list of bounding box coordinates, confidences,
-                    # and class IDs
-                    # centroids.append((centerX,centerY))
-                    boxes.append([x, y, int(width), int(height)])
-                    confidences.append(float(confidence))
-
-        idxs = cv2.dnn.NMSBoxes(boxes, confidences, our_confidence,
-                                our_threshold)
-
-        if len(idxs) > 0:
-            # loop over the indexes we are keeping
-            for i in idxs.flatten():
-                # extract the bounding box coordinates
-                (x, y) = (boxes[i][0], boxes[i][1])
-                (w, h) = (boxes[i][2], boxes[i][3])
-                NMSboxes.append((x, y, w, h))
-                centroids.append((boxes[i][0] + boxes[i][2] / 2, boxes[i][1] + boxes[i][3] / 2))
-                # draw a bounding box rectangle and label on the image
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-                counter += 1
-        objects = ct.update(centroids, NMSboxes, raw_frame,
-                            timestamp=current_frame * video_length_in_seconds / video_length)
-
-        for (objectID, centroid) in objects.items():
-            text = "ID {}".format(objectID)
-            cv2.putText(frame, text, (int(centroid[0]) - 10, int(centroid[1]) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            cv2.circle(frame, (int(centroid[0]), int(centroid[1])), 4, (0, 255, 0), -1)
-
-        cv2.putText(frame, f'{len(objects)} people currently in frame', (10, 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (0, 0, 255), 2)
-
-        #cv2.imshow('frame', frame)
-        out.write(frame)
-
-        end = time()
-        times.append(end - start)
-        counted.append(counter)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-        print(f'Progress: {"{:.2f}".format(100 * current_frame / video_length)}%')
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-    print(f'Avarage time per frame: {np.mean(times)}s')
-    print(f'Max people counted in single frame: {np.max(counted)}')
-    print(f'People counted: {len(people)}')
-
+if __name__ == '__main__':
+    Window().run()
