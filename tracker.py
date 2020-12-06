@@ -4,6 +4,15 @@ from collections import OrderedDict
 import logging
 
 
+def switch_color(winner):
+    return {
+        # case for one dominant color
+        '0': 'blue',
+        '1': 'green',
+        '2': 'red',
+    }[winner]
+
+
 class CentroidTracker():
     def __init__(self, maxFramesDisappeared=40):
         # counter to assign unique IDs to each person
@@ -23,13 +32,23 @@ class CentroidTracker():
         self.objects[self.nextObjectID] = centroid
         self.colours[self.nextObjectID] = self.setColour(box, frame)
         bgr = self.setColour(box, frame)
-        if any(max(bgr)-x > 10 for x in bgr):
-            winner = max(bgr)  # TODO
+        try:
+            if any(max(bgr)-x > 10 for x in bgr):
+                color = switch_color(str(bgr.tolist().index(max(bgr))))  # TODO
+            else:
+                if np.mean(bgr) < 100:
+                    color = 'black'
+                elif np.mean(bgr) > 150:
+                    color = 'white'
+                else:
+                    color = 'grey'
+        except Exception as e:
+            print(e)
 
         minutes = f'int(timestamp / 60)m' if int(timestamp / 60) > 0 else ''
         seconds = f'{round(timestamp % 60)}s'
         logging.info(
-            f'Person of ID: {self.nextObjectID} found at: {minutes}{seconds} with center coordinates: {centroid} and average color of clothing: {str(self.colours[self.nextObjectID])} classified as {"color"} ')
+            f'Person of ID: {self.nextObjectID} found at: {minutes}{seconds} with center coordinates: {centroid} and average color of clothing: {str(self.colours[self.nextObjectID])} classified as {color}')
         self.disappeared[self.nextObjectID] = 0
         self.nextObjectID += 1
 
