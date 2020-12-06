@@ -269,3 +269,4 @@ def show(filename):
     print(f'Avarage time per frame: {np.mean(times)}s')
     print(f'Max people counted in single frame: {np.max(counted)}')
     print(f'People counted: {len(people)}')
+
