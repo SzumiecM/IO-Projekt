@@ -44,11 +44,14 @@ class Window:
 
     def clicked_bt2(self):
         # TODO: handle exception when someone close the app during analyzing
-        self.l5['state'] = 'disabled'
-        filename_without_path = os.path.basename(self.filename)
-        self.output_movie_name = '{}_analyze{}.avi'.format(filename_without_path[:-4], self.number)
-        self.show(self.filename)
-        self.number += 1
+        try:
+            self.l5['state'] = 'disabled'
+            filename_without_path = os.path.basename(self.filename)
+            self.output_movie_name = '{}_analyze{}.avi'.format(filename_without_path[:-4], self.number)
+            self.show(self.filename)
+            self.number += 1
+        except:
+            pass
 
     def show(self, filename):
 
