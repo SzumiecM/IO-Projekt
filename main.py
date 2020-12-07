@@ -42,6 +42,11 @@ class Window:
         self.l8 = tk.Button(self.master, text="Output Logs", command=self.open_logs, fg="blue", font=('Georgia', 10))
         self.l8.pack(side=tk.RIGHT)
 
+        if not os.path.exists(f'{os.getcwd()}/output_logs'):
+            os.makedirs(f'{os.getcwd()}/output_logs')
+        if not os.path.exists(f'{os.getcwd()}/output_videos'):
+            os.makedirs(f'{os.getcwd()}/output_videos')
+
     def open_videos(self):
         os.startfile(f'{os.getcwd()}/output_videos')
 
@@ -91,8 +96,8 @@ class Window:
 
         times = []
 
-        net = cv2.dnn.readNetFromDarknet('yolov4-tiny.cfg', 'yolov4-tiny.weights')
-        LABELS = open('coco.names').read().strip().split("\n")
+        net = cv2.dnn.readNetFromDarknet('dependencies/yolov4-tiny.cfg', 'dependencies/yolov4-tiny.weights')
+        LABELS = open('dependencies/coco.names').read().strip().split("\n")
 
         our_confidence = 0.6
         our_threshold = 0.1
