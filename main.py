@@ -91,7 +91,7 @@ class Window:
 
         out = cv2.VideoWriter(f'output_videos/{filename_without_path}_analyzed.avi',
                               cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
-
+        # initialize centroid tracker class
         ct = CentroidTracker()
 
         times = []
@@ -152,7 +152,7 @@ class Window:
                         # and class IDs
                         boxes.append([x, y, int(width), int(height)])
                         confidences.append(float(confidence))
-
+            # non maximum suppresion to remove overlapping boxes
             idxs = cv2.dnn.NMSBoxes(boxes, confidences, our_confidence,
                                     our_threshold)
 
@@ -167,6 +167,7 @@ class Window:
                     # draw a bounding box rectangle and label on the image
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
                     counter += 1
+            # add new people, update existing, delete vanished
             objects = ct.update(centroids, NMSboxes, raw_frame,
                                 timestamp=current_frame * video_length_in_seconds / video_length)
 
