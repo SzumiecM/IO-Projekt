@@ -3,6 +3,9 @@ from scipy.spatial import distance as dist
 from collections import OrderedDict
 import logging
 
+# CentroidTracker is based on assumption, that the distance between different people
+# will be greater than the distance that those people moved in between two frames
+
 
 def switch_color(winner):
     return {
@@ -30,6 +33,7 @@ class CentroidTracker:
     def register(self, centroid, box, frame, timestamp):
         # use the next available UID
         self.objects[self.nextObjectID] = centroid
+        # Calculate average RGB values of given box
         self.colours[self.nextObjectID] = self.setColour(box, frame)
         bgr = self.setColour(box, frame)
         try:
@@ -62,7 +66,7 @@ class CentroidTracker:
         del self.colours[objectID]
 
     def update(self, inputCentroids, boxes, frame, timestamp):
-        # rects - list of centerX, centerY coordinates of bounding boxes
+        # inputCentroids - list of centerX, centerY coordinates of bounding boxes
         # first - check if it is empty
         if len(inputCentroids) == 0:
             # loop over existing tracked people and mark then as disappeared
@@ -106,15 +110,17 @@ class CentroidTracker:
             for (row, col) in zip(rows, cols):
                 # if we have already examined either the row or
                 # column value before, ignore it
-                # val
+                
                 if row in usedRows or col in usedCols:
                     continue
+                
                 # otherwise, grab the object ID for the current row,
                 # set its new centroid, and reset the disappeared
                 # counter
                 objectID = objectIDs[row]
                 self.objects[objectID] = inputCentroids[col]
                 self.disappeared[objectID] = 0
+                
                 # indicate that we have examined each of the row and
                 # column indexes, respectively
                 usedRows.add(row)
