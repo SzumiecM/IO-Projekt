@@ -55,14 +55,13 @@ class Window:
 
     def show(self, filename, filename_without_path, file_number, files_total):
 
-        # initialize the HOG descriptor/person detector
         logging.basicConfig(filename='output_logs/' + filename_without_path + '.txt', level=logging.INFO)
 
-        logfile = 'output_logs/' + filename_without_path + '.txt'
-        log = logging.getLogger(filename_without_path)
-        log_handler = logging.FileHandler(logfile)
-        log_handler.setLevel(logging.INFO)
-        log.addHandler(log_handler)
+        # logfile = 'output_logs/' + filename_without_path + '.txt'
+        # log = logging.getLogger(filename_without_path)
+        # log_handler = logging.FileHandler(logfile)
+        # log_handler.setLevel(logging.INFO)
+        # log.addHandler(log_handler)
 
         cv2.startWindowThread()
 
@@ -75,7 +74,7 @@ class Window:
 
         out = cv2.VideoWriter(f'output_videos/{filename_without_path}_analyzed.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
 
-        ct = CentroidTracker(log)
+        ct = CentroidTracker()
 
         times = []
         counted = []
@@ -184,7 +183,7 @@ class Window:
         cap.release()
         cv2.destroyAllWindows()
 
-        log.removeHandler(log_handler)
+        logging.shutdown()
         print(f'Avarage time per frame: {np.mean(times)}s')
         print(f'Max people counted in single frame: {np.max(counted)}')
         print(f'People counted: {len(people)}')

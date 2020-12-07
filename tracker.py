@@ -14,7 +14,7 @@ def switch_color(winner):
 
 
 class CentroidTracker():
-    def __init__(self, log):
+    def __init__(self):
         # counter to assign unique IDs to each person
         self.nextObjectID = 0
         # dictionary that stores person ID as the key and the centroid (x,y) coordinates as val
@@ -26,7 +26,6 @@ class CentroidTracker():
         # the number of consecutive frames a person is allowed to be marked as lost/disappeared
         # until we deregister it
         self.maxFramesDisappeared = 40
-        self.log = log
 
     def register(self, centroid, box, frame, timestamp):
         # use the next available UID
@@ -48,13 +47,13 @@ class CentroidTracker():
 
         minutes = f'int(timestamp / 60)m' if int(timestamp / 60) > 0 else ''
         seconds = f'{round(timestamp % 60)}s'
-        self.log.info(
+        logging.info(
             f'Person of ID: {self.nextObjectID} found at: {minutes}{seconds} with center coordinates: {centroid} and average color of clothing: {str(self.colours[self.nextObjectID])} classified as {color}')
         self.disappeared[self.nextObjectID] = 0
         self.nextObjectID += 1
 
     def deregister(self, objectID):
-        self.log.info(f'Person of ID: {objectID} disappeared')
+        logging.info(f'Person of ID: {objectID} disappeared')
         # to deregister person we delete the object ID from both dict
         del self.objects[objectID]
         del self.disappeared[objectID]
