@@ -52,8 +52,10 @@ class CentroidTracker:
         self.disappeared[self.nextObjectID] = 0
         self.nextObjectID += 1
 
-    def deregister(self, objectID):
-        logging.info(f'Person of ID: {objectID} disappeared')
+    def deregister(self, objectID, timestamp):
+        minutes = f'{int(timestamp / 60)}m' if int(timestamp / 60) > 0 else ''
+        seconds = f'{round(timestamp % 60)}s'
+        logging.info(f'Person of ID: {objectID} disappeared at: {minutes}{seconds}')
         # to deregister person we delete the object ID from both dict
         del self.objects[objectID]
         del self.disappeared[objectID]
@@ -70,7 +72,7 @@ class CentroidTracker:
                 # deregister the person if it reached maximum number of frames where it
                 # has been marked as missing
                 if self.disappeared[objectID] > self.maxFramesDisappeared:
-                    self.deregister(objectID)
+                    self.deregister(objectID, timestamp)
 
             return self.objects
 
@@ -132,7 +134,7 @@ class CentroidTracker:
                     # frames the object has been marked "disappeared"
                     # for warrants deregistering the object
                     if self.disappeared[objectID] > self.maxFramesDisappeared:
-                        self.deregister(objectID)
+                        self.deregister(objectID, timestamp)
 
             else:
                 for col in unusedCols:
