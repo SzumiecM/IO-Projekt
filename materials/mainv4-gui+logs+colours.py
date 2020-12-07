@@ -164,7 +164,7 @@ def show(filename):
     people = []
 
     net = cv2.dnn.readNetFromDarknet('yolov4-tiny.cfg', 'yolov4-tiny.weights')
-    LABELS = open('coco.names').read().strip().split("\n")
+    LABELS = open('../coco.names').read().strip().split("\n")
 
     our_confidence = 0.6
     our_threshold = 0.1

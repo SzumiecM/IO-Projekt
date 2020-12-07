@@ -4,11 +4,11 @@
 *.xml
 .idea/IO-Projekt.iml
 materials/yolov3.weights
-outpy.avi
+materials/outpy.avi
 __pycache__/inport.cpython-38.pyc
 __pycache__/yolo4KFC.cpython-38.pyc
 *.log
 *.txt
 *.avi
 *.log
-grupaB1.mpg.log
+materials/grupaB1.mpg.log

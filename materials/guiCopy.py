@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
-import main2 as main
+from materials import main2 as main
 import cv2
 from time import time
 import numpy as np
@@ -81,7 +81,7 @@ class Window:
         people = []
 
         net = cv2.dnn.readNetFromDarknet('yolov4-tiny.cfg', 'yolov4-tiny.weights')
-        LABELS = open('coco.names').read().strip().split("\n")
+        LABELS = open('../coco.names').read().strip().split("\n")
 
         our_confidence = 0.6
         our_threshold = 0.1
