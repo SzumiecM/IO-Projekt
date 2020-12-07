@@ -6,14 +6,14 @@ import logging
 
 def switch_color(winner):
     return {
-        # case for one dominant color
+        # switch case for one dominant color
         '0': 'blue',
         '1': 'green',
         '2': 'red',
     }[winner]
 
 
-class CentroidTracker():
+class CentroidTracker:
     def __init__(self):
         # counter to assign unique IDs to each person
         self.nextObjectID = 0
@@ -33,8 +33,8 @@ class CentroidTracker():
         self.colours[self.nextObjectID] = self.setColour(box, frame)
         bgr = self.setColour(box, frame)
         try:
-            if any(max(bgr)-x > 10 for x in bgr):
-                color = switch_color(str(bgr.tolist().index(max(bgr))))  # TODO
+            if any(max(bgr) - x > 10 for x in bgr):
+                color = switch_color(str(bgr.tolist().index(max(bgr))))
             else:
                 if np.mean(bgr) < 100:
                     color = 'black'
@@ -45,7 +45,7 @@ class CentroidTracker():
         except Exception as e:
             print(e)
 
-        minutes = f'int(timestamp / 60)m' if int(timestamp / 60) > 0 else ''
+        minutes = f'{int(timestamp / 60)}m' if int(timestamp / 60) > 0 else ''
         seconds = f'{round(timestamp % 60)}s'
         logging.info(
             f'Person of ID: {self.nextObjectID} found at: {minutes}{seconds} with center coordinates: {centroid} and average color of clothing: {str(self.colours[self.nextObjectID])} classified as {color}')
@@ -142,16 +142,6 @@ class CentroidTracker():
 
     def setColour(self, box, frame):
         crop_img = frame[box[1]: int(box[1] + box[3] / 2), box[0]:int(box[0] + box[2])]
-        # Wersja 1
         avg_color_per_row = np.average(crop_img, axis=0)
-        # calculate the averages of our rows
         avg_colors = np.average(avg_color_per_row, axis=0)
         return avg_colors
-        # Wwersja 2
-        # a2D = crop_img.reshape(-1, crop_img.shape[-1])
-        # col_range = (256, 256, 256)  # generically : a2D.max(0)+1
-        # a1D = np.ravel_multi_index(a2D.T, col_range)
-        # return np.unravel_index(np.bincount(a1D).argmax(), col_range)
-        # wersja 3
-        # colors, count = np.unique(crop_img.reshape(-1, crop_img.shape[-1]), axis=0, return_counts=True)
-        # return colors[count.argmax()]

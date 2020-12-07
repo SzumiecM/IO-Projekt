@@ -6,6 +6,10 @@ from time import time
 import numpy as np
 import os
 import logging
+from warnings import filterwarnings
+
+# ignore numpy warnings, we know what we're doing
+filterwarnings('ignore')
 
 
 class Window:
@@ -49,20 +53,16 @@ class Window:
             self.l5['state'] = 'disabled'
             for i in range(len(self.filenames)):
                 filename_without_path = os.path.basename(self.filenames[i])
+                log = logging.getLogger()  # root logger
+                for hdlr in log.handlers[:]:  # remove all old handlers
+                    log.removeHandler(hdlr)
+                logging.basicConfig(filename=f'output_logs/{filename_without_path}.log',
+                                    level=logging.INFO, format=f'{filename_without_path}: %(message)s')
                 self.show(self.filenames[i], filename_without_path, i + 1, len(self.filenames))
         except tk.TclError:
             print('Application unexpectedly closed, current progress saved.')
 
     def show(self, filename, filename_without_path, file_number, files_total):
-
-        logging.basicConfig(filename='output_logs/' + filename_without_path + '.txt', level=logging.INFO)
-
-        # logfile = 'output_logs/' + filename_without_path + '.txt'
-        # log = logging.getLogger(filename_without_path)
-        # log_handler = logging.FileHandler(logfile)
-        # log_handler.setLevel(logging.INFO)
-        # log.addHandler(log_handler)
-
         cv2.startWindowThread()
 
         cap = cv2.VideoCapture(filename)
@@ -72,13 +72,12 @@ class Window:
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
 
-        out = cv2.VideoWriter(f'output_videos/{filename_without_path}_analyzed.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
+        out = cv2.VideoWriter(f'output_videos/{filename_without_path}_analyzed.avi',
+                              cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
 
         ct = CentroidTracker()
 
         times = []
-        counted = []
-        people = []
 
         net = cv2.dnn.readNetFromDarknet('yolov4-tiny.cfg', 'yolov4-tiny.weights')
         LABELS = open('coco.names').read().strip().split("\n")
@@ -134,7 +133,6 @@ class Window:
                         y = int(centerY - (height / 2))
                         # update our list of bounding box coordinates, confidences,
                         # and class IDs
-                        # centroids.append((centerX,centerY))
                         boxes.append([x, y, int(width), int(height)])
                         confidences.append(float(confidence))
 
@@ -169,7 +167,6 @@ class Window:
 
             end = time()
             times.append(end - start)
-            counted.append(counter)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -183,10 +180,7 @@ class Window:
         cap.release()
         cv2.destroyAllWindows()
 
-        logging.shutdown()
-        print(f'Avarage time per frame: {np.mean(times)}s')
-        print(f'Max people counted in single frame: {np.max(counted)}')
-        print(f'People counted: {len(people)}')
+        logging.info(f'Avarage time per frame: {np.mean(times)}s')
 
     def run(self):
         self.master.mainloop()
