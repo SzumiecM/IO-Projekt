@@ -1,16 +1,8 @@
 
-.idea/misc.xml
-.idea/workspace.xml
 *.xml
-.idea/IO-Projekt.iml
-materials/yolov3.weights
-materials/outpy.avi
-__pycache__/inport.cpython-38.pyc
-__pycache__/yolo4KFC.cpython-38.pyc
+*.iml
 *.log
 *.txt
 *.avi
 *.log
-materials/grupaB1.mpg.log
-__pycache__/tracker.cpython-38.pyc
 *.pyc
