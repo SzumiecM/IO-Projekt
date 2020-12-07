@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilenames
 from tracker import CentroidTracker
 import cv2
 from time import time
@@ -17,9 +17,7 @@ class Window:
         self.master.geometry('400x200')
         self.master.configure(bg="alice blue")
 
-        self.filename = None
-        self.number = 1
-        self.output_movie_name = ''
+        self.filenames = None
 
         self.l1 = tk.Label(self.master, text="Let's detect !", bg="CadetBlue4", font='Georgia')
         self.l1.pack(fill=tk.X)
@@ -37,26 +35,34 @@ class Window:
 
     def clicked_bt1(self):
         acceptable_types = [('Pliki wideo', '*.avi;*.mp4;*.mov;*.mpg')]
-        self.filename = askopenfilename(filetypes=acceptable_types)
-        if self.filename != '':
-            self.l4['text'] = self.filename
+        self.filenames = askopenfilenames(filetypes=acceptable_types)
+        if self.filenames != '' and len(self.filenames) == 1:
+            self.l4['text'] = self.filenames[0]
+            self.l5['state'] = 'normal'
+        elif len(self.filenames) > 1:
+            self.l4['text'] = 'Multiple files chosen'
             self.l5['state'] = 'normal'
 
     def clicked_bt2(self):
-        # TODO: handle exception when someone close the app during analyzing
+        # handle exception when someone close the app during analyzing
         try:
             self.l5['state'] = 'disabled'
-            filename_without_path = os.path.basename(self.filename)
-            self.output_movie_name = '{}_analyze{}.avi'.format(filename_without_path[:-4], self.number)
-            self.show(self.filename)
-            self.number += 1
-        except:
-            pass
+            for i in range(len(self.filenames)):
+                filename_without_path = os.path.basename(self.filenames[i])
+                self.show(self.filenames[i], filename_without_path, i + 1, len(self.filenames))
+        except tk.TclError:
+            print('Application unexpectedly closed, current progress saved.')
 
-    def show(self, filename):
+    def show(self, filename, filename_without_path, file_number, files_total):
 
         # initialize the HOG descriptor/person detector
-        logging.basicConfig(filename=filename + ".txt", level=logging.INFO)
+        logging.basicConfig(filename='output_logs/' + filename_without_path + '.txt', level=logging.INFO)
+
+        logfile = 'output_logs/' + filename_without_path + '.txt'
+        log = logging.getLogger(filename_without_path)
+        log_handler = logging.FileHandler(logfile)
+        log_handler.setLevel(logging.INFO)
+        log.addHandler(log_handler)
 
         cv2.startWindowThread()
 
@@ -67,9 +73,9 @@ class Window:
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
 
-        out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
+        out = cv2.VideoWriter(f'output_videos/{filename_without_path}_analyzed.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
 
-        ct = CentroidTracker()
+        ct = CentroidTracker(log)
 
         times = []
         counted = []
@@ -169,7 +175,7 @@ class Window:
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-            self.l6['text'] = f'Progress: {"{:.2f}".format(100 * current_frame / video_length)}%'
+            self.l6['text'] = f'File {file_number}/{files_total} progress: {"{:.2f}".format(100 * current_frame / video_length)}%'
             self.master.update()
 
         self.l5['state'] = 'normal'
@@ -178,6 +184,7 @@ class Window:
         cap.release()
         cv2.destroyAllWindows()
 
+        log.removeHandler(log_handler)
         print(f'Avarage time per frame: {np.mean(times)}s')
         print(f'Max people counted in single frame: {np.max(counted)}')
         print(f'People counted: {len(people)}')
