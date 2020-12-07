@@ -47,13 +47,13 @@ class Window:
         if not os.path.exists(f'{os.getcwd()}/output_videos'):
             os.makedirs(f'{os.getcwd()}/output_videos')
 
-    def open_videos(self):
+    def open_videos(self):  # opens folder with output videos
         os.startfile(f'{os.getcwd()}/output_videos')
 
-    def open_logs(self):
+    def open_logs(self):    # opens folder with output logs
         os.startfile(f'{os.getcwd()}/output_logs')
 
-    def clicked_bt1(self):
+    def clicked_bt1(self):  # opens explorer for user to choose input files from
         acceptable_types = [('Pliki wideo', '*.avi;*.mp4;*.mov;*.mpg')]
         self.filenames = askopenfilenames(filetypes=acceptable_types)
         if self.filenames != '' and len(self.filenames) == 1:
@@ -63,7 +63,7 @@ class Window:
             self.l4['text'] = 'Multiple files chosen'
             self.l5['state'] = 'normal'
 
-    def clicked_bt2(self):
+    def clicked_bt2(self):  # starts the analyze
         # handle exception when someone close the app during analyzing
         try:
             self.l5['state'] = 'disabled'
@@ -79,7 +79,7 @@ class Window:
         except tk.TclError:
             print('Application unexpectedly closed, current progress saved.')
 
-    def show(self, filename, filename_without_path, file_number, files_total):
+    def show(self, filename, filename_without_path, file_number, files_total):  # core function used for detection
         cv2.startWindowThread()
 
         cap = cv2.VideoCapture(filename)
