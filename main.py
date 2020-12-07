@@ -7,6 +7,7 @@ import numpy as np
 import os
 import logging
 from warnings import filterwarnings
+from datetime import datetime
 
 # ignore numpy warnings, we know what we're doing
 filterwarnings('ignore')
@@ -17,7 +18,7 @@ class Window:
     def __init__(self):
         self.master = tk.Tk()
 
-        self.master.title("Human Detection")
+        self.master.title("Clienter")
         self.master.geometry('400x200')
         self.master.configure(bg="alice blue")
 
@@ -36,6 +37,16 @@ class Window:
         self.l5.pack(pady=12)
         self.l6 = tk.Label(self.master, text="Analyze not started yet", fg="grey", font=('Georgia', 8), bg="alice blue")
         self.l6.pack(pady=0)
+        self.l7 = tk.Button(self.master, text="Output Videos", command=self.open_videos, fg="blue", font=('Georgia', 10))
+        self.l7.pack(side=tk.LEFT)
+        self.l8 = tk.Button(self.master, text="Output Logs", command=self.open_logs, fg="blue", font=('Georgia', 10))
+        self.l8.pack(side=tk.RIGHT)
+
+    def open_videos(self):
+        os.startfile(f'{os.getcwd()}/output_videos')
+
+    def open_logs(self):
+        os.startfile(f'{os.getcwd()}/output_logs')
 
     def clicked_bt1(self):
         acceptable_types = [('Pliki wideo', '*.avi;*.mp4;*.mov;*.mpg')]
@@ -58,6 +69,7 @@ class Window:
                     log.removeHandler(hdlr)
                 logging.basicConfig(filename=f'output_logs/{filename_without_path}.log',
                                     level=logging.INFO, format=f'{filename_without_path}: %(message)s')
+                logging.info(datetime.now().strftime("%d.%m.%Y %H:%M:%S"))
                 self.show(self.filenames[i], filename_without_path, i + 1, len(self.filenames))
         except tk.TclError:
             print('Application unexpectedly closed, current progress saved.')
@@ -180,7 +192,7 @@ class Window:
         cap.release()
         cv2.destroyAllWindows()
 
-        logging.info(f'Avarage time per frame: {np.mean(times)}s')
+        logging.info(f'Avarage time for calculations per frame: {"{:.2f}".format(np.mean(times))}s --> {"{:.2f}".format(1/np.mean(times))} fps')
 
     def run(self):
         self.master.mainloop()

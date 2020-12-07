@@ -16,7 +16,7 @@ def switch_color(winner):
 class CentroidTracker:
     def __init__(self):
         # counter to assign unique IDs to each person
-        self.nextObjectID = 0
+        self.nextObjectID = 1
         # dictionary that stores person ID as the key and the centroid (x,y) coordinates as val
         self.objects = OrderedDict()
         # stores the information about person clothing colour
