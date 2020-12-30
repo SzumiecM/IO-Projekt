@@ -83,14 +83,15 @@ class Window:
         cv2.startWindowThread()
 
         cap = cv2.VideoCapture(filename)
+        fps = cap.get(cv2.CAP_PROP_FPS)
         video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        video_length_in_seconds = video_length / cap.get(cv2.CAP_PROP_FPS)
+        video_length_in_seconds = video_length / fps
 
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
 
         out = cv2.VideoWriter(f'output_videos/{filename_without_path}_analyzed.avi',
-                              cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
+                              cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), fps, (frame_width, frame_height))
         # initialize centroid tracker class
         ct = CentroidTracker()
 
