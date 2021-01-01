@@ -17,7 +17,7 @@ class Window:
 
     def __init__(self):
         self.master = tk.Tk()
-
+        self.master.resizable(False, False)
         self.master.title("Clienter")
         self.master.geometry('400x200')
         self.master.configure(bg="alice blue")
