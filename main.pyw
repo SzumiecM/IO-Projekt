@@ -26,7 +26,7 @@ class Window:
 
         self.l1 = tk.Label(self.master, text="Let's detect !", bg="CadetBlue4", font='Georgia')
         self.l1.pack(fill=tk.X)
-        self.l2 = tk.Label(self.master, text="Choose the files to analyze:", font=('Georgia', 10), bg="alice blue")
+        self.l2 = tk.Label(self.master, text="Choose one or more files to analyze:", font=('Georgia', 10), bg="alice blue")
         self.l2.pack(pady=(5, 0))
         self.l3 = tk.Button(self.master, text="Browse", command=self.clicked_bt1, fg="blue", font=('Georgia', 10))
         self.l3.pack(pady=0)
