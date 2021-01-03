@@ -72,7 +72,7 @@ class Window:
                 log = logging.getLogger()  # root logger
                 for hdlr in log.handlers[:]:  # remove all old handlers
                     log.removeHandler(hdlr)
-                logging.basicConfig(filename=f'output_logs/{filename_without_path}.log',
+                logging.basicConfig(filename=f'output_logs/{filename_without_path}.log', filemode='w',
                                     level=logging.INFO, format=f'{filename_without_path}: %(message)s')
                 logging.info(datetime.now().strftime("%d.%m.%Y %H:%M:%S"))
                 self.show(self.filenames[i], filename_without_path, i + 1, len(self.filenames))
